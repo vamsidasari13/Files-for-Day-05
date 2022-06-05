@@ -1,0 +1,217 @@
+<!--
+  Low-cost homogeneous FPGA Architecture for QLSOFA_HD.
+​
+  - Skywater 130 nm technology
+  - General purpose logic block:
+    K = 4, N = 8, fracturable 4 LUTs (can operate as one 4-LUT or two 3-LUTs with all 3 inputs shared)
+    with optionally registered outputs
+  - Routing architecture:
+      - 10% L = 1, fc_in = 0.15, Fc_out = 0.10
+      - 10% L = 2, fc_in = 0.15, Fc_out = 0.10
+      - 80% L = 4, fc_in = 0.15, Fc_out = 0.10
+      - 100 routing tracks per channel
+​
+  Authors: Xifan Tang
+​
+To get it to work with RVMyth: Commented lines 156, 157 and 258. And disabled shift_register mode
+        <mode name="shift_register" disabled_in_pack="true"> in line 568
+-->
+<architecture>
+  <!--
+       ODIN II specific config begins
+       Describes the types of user-specified netlist blocks (in blif, this corresponds to
+       ".model [type_of_block]") that this architecture supports.
+​
+       Note: Basic LUTs, I/Os, and flip-flops are not included here as there are
+       already special structures in blif (.names, .input, .output, and .latch)
+       that describe them.
+  -->
+  <models>
+    <!-- A virtual model for I/O to be used in the physical mode of io block -->
+    <model name="io">
+      <input_ports>
+        <port name="outpad"/>
+      </input_ports>
+      <output_ports>
+        <port name="inpad"/>
+      </output_ports>
+    </model>
+​
+    <model name="frac_lut4">
+      <input_ports>
+        <port name="in"/>
+      </input_ports>
+      <output_ports>
+        <port name="lut2_out"/>
+        <port name="lut3_out"/>
+        <port name="lut4_out"/>
+      </output_ports>
+    </model>
+    <model name="carry_follower">
+      <input_ports>
+        <port name="a"/>
+        <port name="b"/>
+        <port name="cin"/>
+      </input_ports>
+      <output_ports>
+        <port name="cout"/>
+      </output_ports>
+    </model>
+    <!-- A virtual model for scan-chain flip-flop to be used in the physical mode of FF -->
+    <model name="scff">
+      <input_ports>
+        <port name="D" clock="clk"/>
+        <port name="DI" clock="clk"/>
+        <port name="reset" clock="clk"/>
+        <port name="clk" is_clock="1"/>
+      </input_ports>
+      <output_ports>
+        <port name="Q" clock="clk"/>
+      </output_ports>
+    </model>
+  </models>
+  <tiles>
+    <!-- Do NOT add clock pins to I/O here!!! VPR does not build clock network in the way that OpenFPGA can support
+         If you need to register the I/O, define clocks in the circuit models
+         These clocks can be handled in back-end
+     -->
+    <!-- Top-side has 1 I/O per tile -->
+    <tile name="io_top" capacity="1" area="0">
+      <equivalent_sites>
+        <site pb_type="io"/>
+      </equivalent_sites>
+      <input name="outpad" num_pins="1"/>
+      <output name="inpad" num_pins="1"/>
+      <fc in_type="frac" in_val="0.15" out_type="frac" out_val="0.10"/>
+      <pinlocations pattern="custom">
+        <loc side="bottom">io_top.outpad io_top.inpad</loc>
+      </pinlocations>
+    </tile>
+    <!-- Right-side has 1 I/O per tile -->
+    <tile name="io_right" capacity="1" area="0">
+      <equivalent_sites>
+        <site pb_type="io"/>
+      </equivalent_sites>
+      <input name="outpad" num_pins="1"/>
+      <output name="inpad" num_pins="1"/>
+      <fc in_type="frac" in_val="0.15" out_type="frac" out_val="0.10"/>
+      <pinlocations pattern="custom">
+        <loc side="left">io_right.outpad io_right.inpad</loc>
+      </pinlocations>
+    </tile>
+    <!-- Bottom-side has 9 I/O per tile -->
+    <tile name="io_bottom" capacity="9" area="0">
+      <equivalent_sites>
+        <site pb_type="io"/>
+      </equivalent_sites>
+      <input name="outpad" num_pins="1"/>
+      <output name="inpad" num_pins="1"/>
+      <fc in_type="frac" in_val="0.15" out_type="frac" out_val="0.10"/>
+      <pinlocations pattern="custom">
+        <loc side="top">io_bottom.outpad io_bottom.inpad</loc>
+      </pinlocations>
+    </tile>
+    <!-- Left-side has 1 I/O per tile -->
+    <tile name="io_left" capacity="1" area="0">
+      <equivalent_sites>
+        <site pb_type="io"/>
+      </equivalent_sites>
+      <input name="outpad" num_pins="1"/>
+      <output name="inpad" num_pins="1"/>
+      <fc in_type="frac" in_val="0.15" out_type="frac" out_val="0.10"/>
+      <pinlocations pattern="custom">
+        <loc side="right">io_left.outpad io_left.inpad</loc>
+      </pinlocations>
+    </tile>
+    <!-- CLB has most pins on the top and right sides -->
+    <tile name="clb" area="53894">
+      <equivalent_sites>
+        <site pb_type="clb"/>
+      </equivalent_sites>
+      <input name="I0" num_pins="2" equivalent="full"/>
+      <input name="I0i" num_pins="2" equivalent="none"/>
+      <input name="I1" num_pins="2" equivalent="full"/>
+      <input name="I1i" num_pins="2" equivalent="none"/>
+      <input name="I2" num_pins="2" equivalent="full"/>
+      <input name="I2i" num_pins="2" equivalent="none"/>
+      <input name="I3" num_pins="2" equivalent="full"/>
+      <input name="I3i" num_pins="2" equivalent="none"/>
+      <input name="I4" num_pins="2" equivalent="full"/>
+      <input name="I4i" num_pins="2" equivalent="none"/>
+      <input name="I5" num_pins="2" equivalent="full"/>
+      <input name="I5i" num_pins="2" equivalent="none"/>
+      <input name="I6" num_pins="2" equivalent="full"/>
+      <input name="I6i" num_pins="2" equivalent="none"/>
+      <input name="I7" num_pins="2" equivalent="full"/>
+      <input name="I7i" num_pins="2" equivalent="none"/>
+      <input name="reg_in" num_pins="1"/>
+      <input name="sc_in" num_pins="1"/>
+      <input name="cin" num_pins="1"/>
+      <input name="reset" num_pins="1" is_non_clock_global="true"/>
+      <output name="O" num_pins="16" equivalent="none"/>
+      <output name="reg_out" num_pins="1"/>
+      <output name="sc_out" num_pins="1"/>
+      <output name="cout" num_pins="1"/>
+      <clock name="clk" num_pins="1"/>
+      <fc in_type="frac" in_val="0.15" out_type="frac" out_val="0.10">
+     <!--   <fc_override port_name="reg_in" fc_type="frac" fc_val="0"/>  -->
+     <!--   <fc_override port_name="reg_out" fc_type="frac" fc_val="0"/>  -->
+        <fc_override port_name="sc_in" fc_type="frac" fc_val="0"/>
+        <fc_override port_name="sc_out" fc_type="frac" fc_val="0"/>
+        <fc_override port_name="cin" fc_type="frac" fc_val="0"/>
+        <fc_override port_name="cout" fc_type="frac" fc_val="0"/>
+        <fc_override port_name="clk" fc_type="frac" fc_val="0"/>
+        <fc_override port_name="reset" fc_type="frac" fc_val="0"/>
+      </fc>
+      <!--pinlocations pattern="spread"/-->
+      <pinlocations pattern="custom">
+        <loc side="left">clb.clk clb.reset</loc>
+        <loc side="top">clb.reg_in clb.sc_in clb.cin clb.O[7:0] clb.I0 clb.I0i clb.I1 clb.I1i clb.I2 clb.I2i clb.I3 clb.I3i</loc>
+        <loc side="right">clb.O[15:8] clb.I4 clb.I4i clb.I5 clb.I5i clb.I6 clb.I6i clb.I7 clb.I7i</loc>
+        <loc side="bottom">clb.reg_out clb.sc_out clb.cout</loc>
+      </pinlocations>
+    </tile>
+  </tiles>
+  <!-- ODIN II specific config ends -->
+  <!-- Physical descriptions begin -->
+  <layout tileable="true">
+    <auto_layout aspect_ratio="1.0">
+      <!--Perimeter of 'io' blocks with 'EMPTY' blocks at corners-->
+      <row type="io_top" starty="H-1" priority="100"/>
+      <row type="io_bottom" starty="0" priority="100"/>
+      <col type="io_left" startx="0" priority="100"/>
+      <col type="io_right" startx="W-1" priority="100"/>
+      <corners type="EMPTY" priority="101"/>
+      <!--Fill with 'clb'-->
+      <fill type="clb" priority="10"/>
+    </auto_layout>
+    <fixed_layout name="2x2" width="4" height="4">
+      <!--Perimeter of 'io' blocks with 'EMPTY' blocks at corners-->
+      <row type="io_top" starty="H-1" priority="100"/>
+      <row type="io_bottom" starty="0" priority="100"/>
+      <col type="io_left" startx="0" priority="100"/>
+      <col type="io_right" startx="W-1" priority="100"/>
+      <corners type="EMPTY" priority="101"/>
+      <!--Fill with 'clb'-->
+      <fill type="clb" priority="10"/>
+    </fixed_layout>
+    <fixed_layout name="12x12" width="14" height="14">
+      <!--Perimeter of 'io' blocks with 'EMPTY' blocks at corners-->
+      <row type="io_top" starty="H-1" priority="100"/>
+      <row type="io_bottom" starty="0" priority="100"/>
+      <col type="io_left" startx="0" priority="100"/>
+      <col type="io_right" startx="W-1" priority="100"/>
+      <corners type="EMPTY" priority="101"/>
+      <!--Fill with 'clb'-->
+      <fill type="clb" priority="10"/>
+    </fixed_layout>
+    <fixed_layout name="16x16" width="18" height="18">
+      <!--Perimeter of 'io' blocks with 'EMPTY' blocks at corners-->
+      <row type="io_top" starty="H-1" priority="100"/>
+      <row type="io_bottom" starty="0" priority="100"/>
+      <col type="io_left" startx="0" priority="100"/>
+      <col type="io_right" startx="W-1" priority="100"/>
+      <corners type="EMPTY" priority="101"/>
+      <!--Fill with 'clb'-->
+      <fill type="clb" priority="10"/>
+  ...
